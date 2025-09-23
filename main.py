@@ -199,7 +199,7 @@ async def recognize(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error during recognition: {e}")
+        print(f"Error during recognition: {e} WHAT IS THE ERRORRRR RAGHHHHH")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # Always close the database connection

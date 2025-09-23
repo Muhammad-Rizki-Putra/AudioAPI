@@ -5,12 +5,10 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import psycopg2
-from dotenv import load_dotenv
 from typing import Optional, List
 from pydantic import BaseModel
 
 # Load environment variables
-load_dotenv()
 
 # Assume your combined code is in a file named 'song_recognizer.py'
 from SearchMultipleSongCloud import connect_to_db, recognize_from_supabase, format_time_position

@@ -1,12 +1,17 @@
 import os
 from celery import Celery
+import ssl
 from SearchMultipleSongCloud import recognize_multiple_songs_supabase, connect_to_db, download_file_from_url
 
 # Initialize Celery, linking it to your Redis instance
-celery_app = Celery(
-    'tasks',
-    broker=os.environ.get('REDIS_URL'),
-    backend=os.environ.get('REDIS_URL')
+celery_app = Celery('tasks')
+
+celery_app.conf.update(
+    broker_url=os.environ.get('REDIS_URL'),
+    result_backend=os.environ.get('REDIS_URL'),
+    # Add these SSL settings for Heroku Redis
+    broker_use_ssl={'ssl_cert_reqs': ssl.CERT_NONE},
+    redis_backend_use_ssl={'ssl_cert_reqs': ssl.CERT_NONE}
 )
 
 @celery_app.task

@@ -1,6 +1,6 @@
 import os
 from celery import Celery
-from your_recognition_logic import recognize_multiple_songs_supabase, connect_to_db # Import your actual logic
+from SearchMultipleSongCloud import recognize_multiple_songs_supabase, connect_to_db # Import your actual logic
 
 # Initialize Celery, linking it to your Redis instance
 celery_app = Celery(

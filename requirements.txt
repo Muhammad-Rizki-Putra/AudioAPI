@@ -8,3 +8,6 @@ pyacoustid
 python-multipart
 celery
 redis
+cloudinary
+requests
+python-dotenv

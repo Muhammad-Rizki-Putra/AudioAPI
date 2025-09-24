@@ -7,6 +7,10 @@ from fastapi.responses import JSONResponse
 import psycopg2
 from typing import Optional, List
 from pydantic import BaseModel
+from celery.result import AsyncResult
+from tasks import process_song_recognition # Import your new Celery task
+import cloudinary
+import cloudinary.uploader
 
 # Load environment variables
 
@@ -22,6 +26,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+cloudinary.config(
+  cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
+  api_key = os.environ.get('CLOUDINARY_API_KEY'),
+  api_secret = os.environ.get('CLOUDINARY_API_SECRET')
 )
 
 # Response models
@@ -107,104 +117,39 @@ def recognize_multiple_songs_supabase(conn, file_path, segment_duration=30, min_
     
     return merged_detections
 
-@app.post("/recognize", response_model=RecognitionResponse)
-async def recognize(
-    audio_file: UploadFile = File(..., description="Audio file to recognize"),
-    mode: str = Form(default="single", description="Recognition mode: 'single' or 'multiple'"),
-    segment_duration: int = Form(default=30, description="Duration of each segment for multiple song detection"),
-    min_confidence: int = Form(default=5, description="Minimum confidence score for detection"),
-    overlap: int = Form(default=5, description="Overlap between segments in seconds")
-):
+@app.post("/recognize")
+async def submit_recognition_job(audio_file: UploadFile = File(...)):
     """
-    Recognize songs from an uploaded audio file.
-    
-    - **audio_file**: The audio file to analyze
-    - **mode**: 'single' for single song detection, 'multiple' for multiple songs
-    - **segment_duration**: Duration of each segment for analysis (multiple mode only)
-    - **min_confidence**: Minimum confidence score to consider a match valid
-    - **overlap**: Overlap between segments in seconds (multiple mode only)
+    This endpoint now runs instantly. It just uploads the file and
+    creates a background job.
     """
-    
-    # Validate file
-    if not audio_file.filename:
-        raise HTTPException(status_code=400, detail="No selected file")
-    
-    # Check file size (100MB limit)
-    content = await audio_file.read()
-    if len(content) > 100 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large. Maximum size is 100MB")
-    
-    # Reset file pointer
-    await audio_file.seek(0)
+    # 1. Upload the file to Cloudinary for persistent storage
+    upload_result = cloudinary.uploader.upload(
+        audio_file.file,
+        resource_type="video" # Use 'video' or 'raw' for audio files
+    )
+    file_url = upload_result.get('secure_url')
 
-    # Establish database connection
-    conn = connect_to_db()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Database connection failed")
+    # 2. Create the background task with the file's URL
+    task = process_song_recognition.delay(file_url)
 
-    # Save the uploaded file to a temporary location
-    try:
-        temp_dir = tempfile.gettempdir()
-        temp_path = os.path.join(temp_dir, audio_file.filename)
-        
-        # Write file content to temporary file
-        with open(temp_path, "wb") as temp_file:
-            content = await audio_file.read()
-            temp_file.write(content)
+    # 3. Immediately return the task's ID
+    return JSONResponse(status_code=202, content={'job_id': task.id})
 
-        results = None
-        if mode == "single":
-            result = recognize_single_song_supabase(conn, temp_path)
-            if result:
-                results = [result]
-        elif mode == "multiple":
-            results = recognize_multiple_songs_supabase(
-                conn,
-                temp_path,
-                segment_duration=segment_duration,
-                min_confidence=min_confidence,
-                overlap=overlap
-            )
+@app.get("/status/{job_id}")
+async def get_job_status(job_id: str):
+    """
+    This endpoint allows Laravel to check the status of the job.
+    """
+    task_result = AsyncResult(job_id, app=celery_app)
+
+    if task_result.ready():
+        if task_result.successful():
+            return {'status': 'COMPLETED', 'results': task_result.get()}
         else:
-            raise HTTPException(status_code=400, detail="Invalid mode. Use 'single' or 'multiple'")
-        
-        # Clean up the temporary file
-        os.remove(temp_path)
-
-        # Format the results for JSON output
-        formatted_results = []
-        if results:
-            for res in results:
-                # Handle both single and multiple song detection formats
-                if "offset" in res:  # Single song detection format
-                    formatted_results.append({
-                        "song": res.get("song"),
-                        "position": res.get("position"),  
-                        "confidence": res.get("confidence")
-                    })
-                else:  # Multiple song detection format
-                    # Format the position information
-                    start_time = res.get("start_time", 0)
-                    end_time = res.get("end_time", 0)
-                    position_str = f"{format_time_position(start_time)} - {format_time_position(end_time)}"
-                    
-                    formatted_results.append({
-                        "song": res.get("song"),
-                        "position": position_str,
-                        "confidence": res.get("confidence")
-                    })
-        
-        return RecognitionResponse(results=formatted_results)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error during recognition: {e} WHAT IS THE ERRORRRR RAGHHHHH")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Always close the database connection
-        if conn:
-            conn.close()
+            return {'status': 'FAILED', 'error': str(task_result.info)}
+    else:
+        return {'status': 'PENDING'}
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():

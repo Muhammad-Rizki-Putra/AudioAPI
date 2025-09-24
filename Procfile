@@ -1,1 +1,2 @@
-web: gunicorn -w 2 -k uvicorn.workers.UvicornWorker --timeout 300 main:app
+web: uvicorn main:app --host 0.0.0.0 --port ${PORT}
+worker: celery -A tasks.worker worker --loglevel=info

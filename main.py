@@ -11,6 +11,8 @@ from celery.result import AsyncResult
 from tasks import process_song_recognition # Import your new Celery task
 import cloudinary
 import cloudinary.uploader
+from celery.result import AsyncResult
+from tasks import process_song_recognition, celery_app
 
 # Load environment variables
 

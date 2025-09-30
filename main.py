@@ -75,13 +75,10 @@ async def submit_recognition_job(audio_file: UploadFile = File(...)):
     Accepts an MP3 audio file, uploads it for storage, 
     and creates a background job for recognition.
     """
-    if audio_file.content_type != "audio/mpeg":
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an MP3 file.")
-
     upload_result = cloudinary.uploader.upload(
         audio_file.file,
-        resource_type="video",
-        format="mp3" 
+        resource_type="video", # 'video' resource type works for most audio formats
+        # format="mp3" # You can remove this or keep it if you want Cloudinary to convert it
     )
     file_url = upload_result.get('secure_url')
 

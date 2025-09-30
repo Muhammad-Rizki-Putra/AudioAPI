@@ -69,6 +69,29 @@ async def submit_recognition_job(audio_file: UploadFile = File(...)):
     # 3. Immediately return the task's ID
     return JSONResponse(status_code=202, content={'job_id': task.id})
 
+@app.post("/recognize-single")
+async def submit_recognition_job(audio_file: UploadFile = File(...)):
+    """
+    Accepts an MP3 audio file, uploads it for storage, 
+    and creates a background job for recognition.
+    """
+    if audio_file.content_type != "audio/mpeg":
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an MP3 file.")
+
+    upload_result = cloudinary.uploader.upload(
+        audio_file.file,
+        resource_type="video",
+        format="mp3" 
+    )
+    file_url = upload_result.get('secure_url')
+
+    if not file_url:
+        raise HTTPException(status_code=500, detail="Could not upload file to storage.")
+
+    task = process_song_recognition.delay(file_url)
+
+    return JSONResponse(status_code=202, content={'job_id': task.id})
+
 @app.get("/status/{job_id}")
 async def get_job_status(job_id: str):
     """

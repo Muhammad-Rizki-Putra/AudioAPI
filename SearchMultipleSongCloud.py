@@ -37,18 +37,20 @@ def fingerprint_song(file_path, start_time=0, duration=None):
   (This is your existing fingerprinting function)
   """
   try:
+
+    TARGET_SR = 8000
     if duration is not None:
-      y, sr = librosa.load(file_path, offset=start_time, duration=duration)
+        y, sr = librosa.load(file_path, offset=start_time, duration=duration, sr=TARGET_SR)
     else:
-      y, sr = librosa.load(file_path)
+        y, sr = librosa.load(file_path, sr=TARGET_SR)
 
     D = librosa.stft(y)
     S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
 
-    neighborhood_size = 15
+    neighborhood_size = 20
     local_max = maximum_filter(S_db, footprint=np.ones((neighborhood_size, neighborhood_size)), mode='constant')
     detected_peaks = (S_db == local_max)
-    amplitude_threshold = -50.0
+    amplitude_threshold = -45.0
     peaks = np.where((detected_peaks) & (S_db > amplitude_threshold))
     
     if not peaks[0].any():
@@ -103,7 +105,7 @@ def recognize_from_supabase(conn, query_path, start_time=0, duration=None):
         cursor = conn.cursor()
 
         # Process in chunks like SQLite version
-        query_hashes = [str(h) for h, _ in query_fingerprints]
+        query_hashes = [h for h, _ in query_fingerprints] 
         query_hash_to_time = {str(h): t for h, t in query_fingerprints}
         
         CHUNK_SIZE = 900
@@ -117,9 +119,9 @@ def recognize_from_supabase(conn, query_path, start_time=0, duration=None):
                 SELECT f."intHash", s."szsongtitle", f."offSetTime"
                 FROM public."CALA_MDM_FINGERPRINTS" AS f
                 JOIN public."cala_mdm_songs" AS s ON s."szsongid" = f."szSongID"
-                WHERE f."intHash"::text IN ({placeholders})
+                WHERE f."intHash" IN ({placeholders}) -- No ::text cast
             """
-            
+            a
             cursor.execute(sql_query, chunk)
             db_matches.extend(cursor.fetchall())
 

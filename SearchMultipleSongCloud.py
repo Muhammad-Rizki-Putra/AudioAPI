@@ -38,7 +38,7 @@ def fingerprint_song(file_path, start_time=0, duration=None):
   """
   try:
     if duration is not None:
-        y, sr = librosa.load(file_path, offset=start_time, duration=duration, sr=TARGET_SR)
+        y, sr = librosa.load(file_path, offset=start_time, duration=duration)
     else:
         y, sr = librosa.load(file_path)
 

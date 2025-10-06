@@ -47,10 +47,10 @@ def fingerprint_song(file_path, start_time=0, duration=None):
     D = librosa.stft(y)
     S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
 
-    neighborhood_size = 20
+    neighborhood_size = 15
     local_max = maximum_filter(S_db, footprint=np.ones((neighborhood_size, neighborhood_size)), mode='constant')
     detected_peaks = (S_db == local_max)
-    amplitude_threshold = -45.0
+    amplitude_threshold = -50.0
     peaks = np.where((detected_peaks) & (S_db > amplitude_threshold))
     
     if not peaks[0].any():

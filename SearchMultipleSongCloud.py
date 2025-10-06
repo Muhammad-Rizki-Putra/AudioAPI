@@ -121,7 +121,7 @@ def recognize_from_supabase(conn, query_path, start_time=0, duration=None):
                 JOIN public."cala_mdm_songs" AS s ON s."szsongid" = f."szSongID"
                 WHERE f."intHash" IN ({placeholders}) -- No ::text cast
             """
-            a
+            
             cursor.execute(sql_query, chunk)
             db_matches.extend(cursor.fetchall())
 

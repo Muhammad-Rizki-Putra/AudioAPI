@@ -1,2 +1,1 @@
-web: uvicorn main:app --host 0.0.0.0 --port ${PORT}
-worker: celery -A tasks.celery_app worker --loglevel=info
+worker: python main.py

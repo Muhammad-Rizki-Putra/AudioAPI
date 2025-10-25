@@ -5,10 +5,12 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import psycopg2
+from dotenv import load_dotenv
 from typing import Optional, List
 from pydantic import BaseModel
 
 # Load environment variables
+load_dotenv()
 
 # Assume your combined code is in a file named 'song_recognizer.py'
 from SearchMultipleSongCloud import connect_to_db, recognize_from_supabase, format_time_position
@@ -199,7 +201,7 @@ async def recognize(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error during recognition: {e} WHAT IS THE ERRORRRR RAGHHHHH")
+        print(f"Error during recognition: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # Always close the database connection

@@ -4,6 +4,7 @@ import numpy as np
 from scipy.ndimage import maximum_filter
 import argparse
 from collections import defaultdict
+
 import tempfile
 import glob
 import psycopg2             # NEW: Use psycopg2 for PostgreSQL
@@ -34,10 +35,13 @@ def fingerprint_song(file_path, start_time=0, duration=None):
   (This is your existing fingerprinting function)
   """
   try:
+
+    TARGET_SR = 11025
+      
     if duration is not None:
-      y, sr = librosa.load(file_path, offset=start_time, duration=duration)
+        y, sr = librosa.load(file_path, offset=start_time, duration=duration, sr=TARGET_SR)
     else:
-      y, sr = librosa.load(file_path)
+        y, sr = librosa.load(file_path, sr=TARGET_SR)
 
     D = librosa.stft(y)
     S_db = librosa.amplitude_to_db(np.abs(D), ref=np.max)
